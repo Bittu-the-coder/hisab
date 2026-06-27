@@ -1,0 +1,9 @@
+backend/node_modules/
+backend/.env
+backend/pnpm-lock.yaml
+app/.dart_tool/
+app/build/
+app/.flutter-plugins
+*.iml
+.DS_Store
+.agents
