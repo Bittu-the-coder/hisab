@@ -149,12 +149,7 @@ class _ShellScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
     final index = _currentIndex(location);
-    final rootRoutes = ['/home/dashboard', '/home/expenses', '/home/insights', '/home/profile'];
-    final isRoot = rootRoutes.contains(location);
-
-    return PopScope(
-      canPop: !isRoot,
-      child: Scaffold(
+    return Scaffold(
       body: child,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -200,7 +195,6 @@ class _ShellScreen extends StatelessWidget {
           ),
         ),
       ),
-    ),
     );
   }
 }
