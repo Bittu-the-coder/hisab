@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/utils/currency_formatter.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/balance_provider.dart';
+import '../../../providers/expense_provider.dart';
 import '../../../providers/theme_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -11,6 +14,12 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).valueOrNull;
     final themeMode = ref.watch(themeModeProvider);
+    final now = DateTime.now();
+    final expenses = ref.watch(expenseListProvider((month: now.month, year: now.year))).valueOrNull;
+    final balance = ref.watch(balanceProvider).valueOrNull;
+    final count = ref.watch(totalTransactionsProvider).valueOrNull ?? 0;
+    final totalDebit = expenses?.where((e) => e.isDebit).fold<int>(0, (s, e) => s + e.amount) ?? 0;
+    final totalExisting = (balance?.cashBalance ?? 0) + (balance?.onlineBalance ?? 0);
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
       body: ListView(
@@ -25,9 +34,9 @@ class ProfileScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(16),
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _stat(context, 'This month', '₹0'),
-                _stat(context, 'All time', '₹0'),
-                _stat(context, 'Expenses', '0'),
+                _stat(context, 'Total Expense', CurrencyFormatter.format(totalDebit)),
+                _stat(context, 'Total Money', CurrencyFormatter.format(totalExisting)),
+                _stat(context, 'Transactions', count.toString()),
               ]),
           )),
           const SizedBox(height: 16),

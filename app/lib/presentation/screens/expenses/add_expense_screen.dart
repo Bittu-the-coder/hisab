@@ -21,6 +21,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   String _transactionType = 'debit';
   late DateTime _selectedDate;
   bool _saving = false;
+  bool _editing = false;
+  String? _editId;
   String? _groupId;
 
   @override
@@ -30,7 +32,20 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final extra = GoRouterState.of(context).extra;
-      if (extra is Map && extra.containsKey('groupId')) {
+      if (extra is ExpenseModel) {
+        _editing = true;
+        _editId = extra.id;
+        _amountCtrl.text = (extra.amount / 100).toStringAsFixed(0);
+        _titleCtrl.text = extra.title;
+        _noteCtrl.text = extra.note;
+        _tagsCtrl.text = extra.tags.join(', ');
+        setState(() {
+          _selectedCategory = extra.category;
+          _paymentMode = extra.paymentMode;
+          _transactionType = extra.transactionType;
+          _selectedDate = extra.date;
+        });
+      } else if (extra is Map && extra.containsKey('groupId')) {
         setState(() => _groupId = extra['groupId'] as String);
       }
     });
@@ -112,16 +127,20 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     );
 
     try {
-      await ref.read(expenseListProvider((month: _selectedDate.month, year: _selectedDate.year)).notifier).addExpense(input);
+      if (_editing) {
+        await ref.read(expenseListProvider((month: _selectedDate.month, year: _selectedDate.year)).notifier).updateExpense(_editId!, input);
+      } else {
+        await ref.read(expenseListProvider((month: _selectedDate.month, year: _selectedDate.year)).notifier).addExpense(input);
+      }
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_transactionType == 'debit' ? 'Expense added ✓' : 'Income added ✓'), backgroundColor: AppColors.accent),
+          SnackBar(content: Text(_editing ? 'Updated ✓' : (_transactionType == 'debit' ? 'Expense added ✓' : 'Income added ✓')), backgroundColor: AppColors.accent),
         );
         context.pop();
       }
     } catch (e) {
       if (context.mounted) {
-        _showSnackBar('Failed to add expense');
+        _showSnackBar('Failed to ${_editing ? 'update' : 'add'} expense');
         setState(() => _saving = false);
       }
     }
@@ -134,7 +153,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Transaction')),
+      appBar: AppBar(title: Text(_editing ? 'Edit Transaction' : 'Add Transaction')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/repositories/auth_repository.dart';
 import '../data/models/user_model.dart';
@@ -31,18 +32,38 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     _ref.invalidate(groupsProvider);
   }
 
-  Future<void> tryAutoLogin() async {
+  Future<bool> tryAutoLogin() async {
     final token = await _storage.getAccessToken();
-    if (token != null) {
-      try {
-        final user = await _authRepo.getMe();
-        state = AsyncData(user);
-        _ref.read(balanceProvider.notifier).fetch();
-      } catch (_) {
+    if (token == null) return false;
+
+    // Set state from cache immediately for offline-first rendering
+    final cached = await _storage.getCachedUser();
+    if (cached != null) {
+      state = AsyncData(cached);
+    }
+
+    try {
+      final user = await _authRepo.getMe();
+      state = AsyncData(user);
+      await _storage.cacheUser(user);
+      final now = DateTime.now();
+      _ref.read(expenseListProvider((month: now.month, year: now.year)).notifier).syncPending();
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
         await _storage.clearAll();
         state = const AsyncData(null);
+        return false;
       }
+      // Network error – keep cached state, don't clear tokens
+      if (cached == null) {
+        state = const AsyncData(null);
+      }
+    } catch (_) {
+      await _storage.clearAll();
+      state = const AsyncData(null);
+      return false;
     }
+    return true;
   }
 
   Future<void> login(String email, String password) async {
@@ -50,6 +71,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     try {
       final result = await _authRepo.login(email, password);
       await _storage.saveTokens(result.accessToken, result.refreshToken);
+      await _storage.cacheUser(result.user);
       _invalidateData();
       state = AsyncData(result.user);
       _ref.read(balanceProvider.notifier).fetch();
@@ -63,6 +85,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     try {
       final result = await _authRepo.register(name, email, password);
       await _storage.saveTokens(result.accessToken, result.refreshToken);
+      await _storage.cacheUser(result.user);
       _invalidateData();
       state = AsyncData(result.user);
       _ref.read(balanceProvider.notifier).fetch();

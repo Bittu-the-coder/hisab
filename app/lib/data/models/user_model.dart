@@ -27,4 +27,12 @@ class UserModel {
     'name': name,
     'avatar': avatar,
   };
+
+  Map<String, dynamic> toFullJson() => {
+    '_id': id,
+    'name': name,
+    'email': email,
+    'avatar': avatar,
+    'currency': currency,
+  };
 }

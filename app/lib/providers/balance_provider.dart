@@ -10,7 +10,9 @@ final balanceRepositoryProvider = Provider<BalanceRepository>((ref) {
 class BalanceNotifier extends StateNotifier<AsyncValue<BalanceModel>> {
   final BalanceRepository _repo;
 
-  BalanceNotifier(this._repo) : super(const AsyncLoading());
+  BalanceNotifier(this._repo) : super(const AsyncLoading()) {
+    fetch();
+  }
 
   Future<void> fetch() async {
     state = const AsyncLoading();
@@ -25,18 +27,6 @@ class BalanceNotifier extends StateNotifier<AsyncValue<BalanceModel>> {
   Future<void> updateBalance(BalanceModel balance) async {
     state = AsyncData(balance);
     await _repo.syncBalance(balance);
-  }
-
-  Future<void> adjustBalance({required int amount, required String paymentMode, required bool isCredit}) async {
-    final current = state.valueOrNull ?? BalanceModel(cashBalance: 0, onlineBalance: 0);
-    final isOnline = !['cash'].contains(paymentMode);
-    final change = isCredit ? amount : -amount;
-    final updated = BalanceModel(
-      cashBalance: isOnline ? current.cashBalance : current.cashBalance + change,
-      onlineBalance: isOnline ? current.onlineBalance + change : current.onlineBalance,
-    );
-    state = AsyncData(updated);
-    await _repo.syncBalance(updated);
   }
 }
 

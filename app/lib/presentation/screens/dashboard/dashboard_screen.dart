@@ -31,10 +31,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     _year = now.year;
   }
 
-  void _refresh() {
-    ref.invalidate(balanceProvider);
-    ref.invalidate(expenseListProvider((month: _month, year: _year)));
+  Future<void> _refresh() async {
     ref.invalidate(insightSummaryProvider((month: _month, year: _year)));
+    ref.invalidate(budgetStatusProvider((month: _month, year: _year)));
+    await Future.wait([
+      ref.read(expenseListProvider((month: _month, year: _year)).notifier).fetch().catchError((_) {}),
+      ref.read(balanceProvider.notifier).fetch().catchError((_) {}),
+    ]);
     setState(() {});
   }
 

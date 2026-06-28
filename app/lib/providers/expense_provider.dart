@@ -35,6 +35,23 @@ class ExpenseListNotifier extends StateNotifier<AsyncValue<List<ExpenseModel>>> 
     _ref.invalidate(categoryBreakdownProvider((month: month, year: year)));
     _ref.invalidate(dailyLogProvider((month: month, year: year)));
     _ref.invalidate(monthlyTrendProvider(6));
+    _ref.invalidate(totalTransactionsProvider);
+  }
+
+  Future<void> updateExpense(String id, ExpenseInput input) async {
+    try {
+      final current = state.value ?? [];
+      final updated = await _repo.updateExpense(id, input);
+      state = AsyncData([
+        updated,
+        ...current.where((e) => e.id != id),
+      ]);
+      _invalidateRelated();
+      _ref.invalidate(balanceProvider);
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>?> addExpense(ExpenseInput input) async {
@@ -42,11 +59,7 @@ class ExpenseListNotifier extends StateNotifier<AsyncValue<List<ExpenseModel>>> 
       final result = await _repo.createExpense(input);
       state = AsyncData([result.expense, ...state.value ?? <ExpenseModel>[]]);
       _invalidateRelated();
-      _ref.read(balanceProvider.notifier).adjustBalance(
-        amount: input.amount,
-        paymentMode: input.paymentMode,
-        isCredit: input.transactionType == 'credit',
-      );
+      _ref.invalidate(balanceProvider);
       return result.budgetAlert;
     } catch (e, st) {
       state = AsyncError(e, st);
@@ -57,17 +70,10 @@ class ExpenseListNotifier extends StateNotifier<AsyncValue<List<ExpenseModel>>> 
   Future<void> deleteExpense(String id) async {
     try {
       final current = state.value ?? [];
-      final expense = current.where((e) => e.id == id).firstOrNull;
       await _repo.deleteExpense(id);
       state = AsyncData([...current.where((e) => e.id != id)]);
       _invalidateRelated();
-      if (expense != null) {
-        _ref.read(balanceProvider.notifier).adjustBalance(
-          amount: expense.amount,
-          paymentMode: expense.paymentMode,
-          isCredit: expense.transactionType == 'debit',
-        );
-      }
+      _ref.invalidate(balanceProvider);
     } catch (e, st) {
       state = AsyncError(e, st);
       rethrow;
@@ -83,3 +89,9 @@ class ExpenseListNotifier extends StateNotifier<AsyncValue<List<ExpenseModel>>> 
 final expenseListProvider = StateNotifierProvider.family<ExpenseListNotifier, AsyncValue<List<ExpenseModel>>, ({int month, int year})>(
   (ref, params) => ExpenseListNotifier(ref.watch(expenseRepositoryProvider), params.month, params.year, ref),
 );
+
+final totalTransactionsProvider = FutureProvider<int>((ref) async {
+  final repo = ref.watch(expenseRepositoryProvider);
+  final result = await repo.getExpenses(page: 1, limit: 1);
+  return result.total;
+});

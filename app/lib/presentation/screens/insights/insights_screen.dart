@@ -737,7 +737,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen>
                         ),
                         title: Text(e.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                         subtitle: Text(e.category.replaceAll('_', ' ').split(' ').map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '').join(' '), style: const TextStyle(fontSize: 11)),
-                        trailing: Text(CurrencyFormatter.format(e.amount), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        trailing: Text('${e.isCredit ? '+' : '-'}${CurrencyFormatter.format(e.amount)}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: e.isCredit ? Colors.green : null)),
                       ),
                     )).toList(),
                   );

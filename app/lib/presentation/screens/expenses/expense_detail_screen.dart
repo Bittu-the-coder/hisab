@@ -210,7 +210,7 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
           children: [
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () => context.pop(),
+                onPressed: () => context.push('/home/expenses/add', extra: _expense),
                 icon: const Icon(Icons.edit),
                 label: const Text('Edit'),
                 style: OutlinedButton.styleFrom(

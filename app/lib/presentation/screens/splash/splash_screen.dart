@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/service_providers.dart';
 import '../../widgets/hisab_logo.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -14,8 +16,8 @@ class SplashScreen extends ConsumerStatefulWidget {
 class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _fadeIn;
   late Animation<Offset> _slideUp;
+  final _animationDone = Completer<void>();
 
   @override
   void initState() {
@@ -24,17 +26,22 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    _fadeIn = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
     _slideUp = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        if (!_animationDone.isCompleted) _animationDone.complete();
+      }
+    });
     _controller.forward();
     _checkAuth();
   }
 
   @override
   void dispose() {
+    if (!_animationDone.isCompleted) _animationDone.complete();
     _controller.dispose();
     super.dispose();
   }
@@ -45,19 +52,35 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     final seenOnboarding = prefs.getBool('onboarding_seen') ?? false;
     if (!mounted) return;
     if (!seenOnboarding) {
-      await _controller.forward(from: 0);
+      await _animationDone.future;
       if (!mounted) return;
       context.go('/onboarding');
       return;
     }
-    final auth = ref.read(authProvider.notifier);
-    await auth.tryAutoLogin();
+
+    final storage = ref.read(localStorageProvider);
+    final cachedUser = await storage.getCachedUser();
     if (!mounted) return;
-    await _controller.forward(from: 0);
+
+    await _animationDone.future;
     if (!mounted) return;
-    final user = ref.read(authProvider);
-    if (user.valueOrNull != null) {
+
+    if (cachedUser != null) {
+      final auth = ref.read(authProvider.notifier);
+      auth.tryAutoLogin();
       context.go('/home/dashboard');
+      return;
+    }
+
+    final token = await storage.getAccessToken();
+    if (!mounted) return;
+
+    if (token != null) {
+      final auth = ref.read(authProvider.notifier);
+      await auth.tryAutoLogin();
+      if (!mounted) return;
+      final user = ref.read(authProvider);
+      context.go(user.valueOrNull != null ? '/home/dashboard' : '/login');
     } else {
       context.go('/login');
     }
@@ -67,11 +90,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: FadeTransition(
-          opacity: _fadeIn,
-          child: SlideTransition(
-            position: _slideUp,
-            child: Column(
+        child: SlideTransition(
+          position: _slideUp,
+          child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const HisabLogo(size: 80),
@@ -88,7 +109,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               ],
             ),
           ),
-        ),
       ),
     );
   }
