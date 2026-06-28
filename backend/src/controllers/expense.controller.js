@@ -1,13 +1,22 @@
 const Expense = require('../models/Expense');
+const User = require('../models/User');
 const { checkBudgetAlert } = require('../services/budgetChecker');
+
+const ONLINE_MODES = ['upi', 'card', 'netbanking', 'net_banking', 'other'];
 
 exports.create = async (req, res, next) => {
   try {
-    const { title, amount, category, date, note, paymentMode, tags, groupId } = req.body;
+    const { title, amount, category, date, note, paymentMode, transactionType, tags, groupId } = req.body;
+    const type = transactionType || 'debit';
     const expense = await Expense.create({
       user: req.user._id, title, amount, category,
-      date, note, paymentMode, tags, groupId
+      date, note, paymentMode, transactionType: type, tags, groupId
     });
+    const isOnline = ONLINE_MODES.includes(paymentMode);
+    const balanceField = isOnline ? 'onlineBalance' : 'cashBalance';
+    const change = type === 'credit' ? amount : -amount;
+    await User.findByIdAndUpdate(req.user._id, { $inc: { [balanceField]: change } });
+    req.user[balanceField] += change;
     if (groupId) {
       const GroupExpense = require('../models/GroupExpense');
       await GroupExpense.create({
@@ -16,9 +25,12 @@ exports.create = async (req, res, next) => {
         expenseRef: expense._id
       });
     }
-    const dt = expense.date;
-    const budgetAlert = await checkBudgetAlert(req.user._id, dt.getMonth() + 1, dt.getFullYear());
-    res.status(201).json({ success: true, data: { expense, budgetAlert } });
+    if (type === 'debit') {
+      const dt = expense.date;
+      const budgetAlert = await checkBudgetAlert(req.user._id, dt.getMonth() + 1, dt.getFullYear());
+      return res.status(201).json({ success: true, data: { expense, budgetAlert } });
+    }
+    res.status(201).json({ success: true, data: { expense, budgetAlert: null } });
   } catch (error) {
     next(error);
   }
@@ -88,15 +100,31 @@ exports.get = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
   try {
-    const { title, amount, category, date, note, paymentMode, tags } = req.body;
-    const expense = await Expense.findOneAndUpdate(
-      { _id: req.params.id, user: req.user._id },
-      { title, amount, category, date, note, paymentMode, tags },
-      { new: true, runValidators: true }
-    );
-    if (!expense) {
+    const { title, amount, category, date, note, paymentMode, transactionType, tags } = req.body;
+    const old = await Expense.findOne({ _id: req.params.id, user: req.user._id });
+    if (!old) {
       return res.status(404).json({ success: false, message: 'Expense not found' });
     }
+    const newAmount = amount ?? old.amount;
+    const newMode = paymentMode ?? old.paymentMode;
+    const newType = transactionType ?? old.transactionType;
+    const oldIsOnline = ONLINE_MODES.includes(old.paymentMode);
+    const newIsOnline = ONLINE_MODES.includes(newMode);
+    if (oldIsOnline !== newIsOnline || old.amount !== newAmount || old.transactionType !== newType) {
+      const reverseField = oldIsOnline ? 'onlineBalance' : 'cashBalance';
+      const reverseChange = old.transactionType === 'credit' ? -old.amount : old.amount;
+      await User.findByIdAndUpdate(req.user._id, { $inc: { [reverseField]: reverseChange } });
+      req.user[reverseField] += reverseChange;
+      const applyField = newIsOnline ? 'onlineBalance' : 'cashBalance';
+      const applyChange = newType === 'credit' ? newAmount : -newAmount;
+      await User.findByIdAndUpdate(req.user._id, { $inc: { [applyField]: applyChange } });
+      req.user[applyField] += applyChange;
+    }
+    const expense = await Expense.findOneAndUpdate(
+      { _id: req.params.id, user: req.user._id },
+      { title, amount, category, date, note, paymentMode, transactionType, tags },
+      { new: true, runValidators: true }
+    );
     res.json({ success: true, data: { expense } });
   } catch (error) {
     next(error);
@@ -109,6 +137,11 @@ exports.remove = async (req, res, next) => {
     if (!expense) {
       return res.status(404).json({ success: false, message: 'Expense not found' });
     }
+    const isOnline = ONLINE_MODES.includes(expense.paymentMode);
+    const balanceField = isOnline ? 'onlineBalance' : 'cashBalance';
+    const change = expense.transactionType === 'credit' ? -expense.amount : expense.amount;
+    await User.findByIdAndUpdate(req.user._id, { $inc: { [balanceField]: change } });
+    req.user[balanceField] += change;
     if (expense.groupId) {
       const GroupExpense = require('../models/GroupExpense');
       await GroupExpense.deleteMany({ expenseRef: expense._id });

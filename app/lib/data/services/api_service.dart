@@ -209,4 +209,18 @@ class ApiService {
     final res = await _dio.patch('/users/me', data: data);
     return res.data['data'];
   }
+
+  // Balances
+  Future<Map<String, dynamic>> getBalance() async {
+    final res = await _dio.get('/users/balance');
+    return res.data['data'];
+  }
+
+  Future<Map<String, dynamic>> updateBalance({int? cashBalance, int? onlineBalance}) async {
+    final data = <String, dynamic>{};
+    if (cashBalance != null) data['cashBalance'] = cashBalance;
+    if (onlineBalance != null) data['onlineBalance'] = onlineBalance;
+    final res = await _dio.put('/users/balance', data: data);
+    return res.data['data'];
+  }
 }

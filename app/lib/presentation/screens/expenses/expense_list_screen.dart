@@ -104,7 +104,8 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
       return true;
     }).toList();
 
-    final totalAmount = filtered.fold<int>(0, (sum, e) => sum + e.amount);
+    final totalAmount = filtered.fold<int>(0, (sum, e) => sum + (e.isCredit ? e.amount : 0));
+    final totalDebited = filtered.fold<int>(0, (sum, e) => sum + (e.isDebit ? e.amount : 0));
 
     final grouped = <String, List<ExpenseModel>>{};
     for (final e in filtered) {
@@ -146,8 +147,8 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Total', style: Theme.of(context).textTheme.bodySmall),
-                        Text(CurrencyFormatter.format(totalAmount), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Text('Net', style: Theme.of(context).textTheme.bodySmall),
+                        Text(CurrencyFormatter.format(totalAmount - totalDebited), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: totalAmount > totalDebited ? AppColors.accent : null)),
                       ],
                     ),
                     Column(
@@ -277,12 +278,15 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
                 ),
                 title: Text(expense.title, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
                 subtitle: Text(
-                  '${DateHelpers.format(expense.date)}  ·  ${expense.paymentMode.toUpperCase()}',
+                  '${DateHelpers.format(expense.date)}  ·  ${expense.paymentMode.toUpperCase()}  ·  ${expense.isCredit ? "Credit" : "Debit"}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 trailing: Text(
-                  CurrencyFormatter.format(expense.amount),
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                  '${expense.isCredit ? '+' : '-'} ${CurrencyFormatter.format(expense.amount)}',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: expense.isCredit ? AppColors.accent : null,
+                  ),
                 ),
               ),
             ),

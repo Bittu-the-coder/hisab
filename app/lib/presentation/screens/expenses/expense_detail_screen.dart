@@ -136,8 +136,11 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
               Text(expense.title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               Text(
-                CurrencyFormatter.format(expense.amount),
-                style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.bold),
+                '${expense.isCredit ? '+' : '-'} ${CurrencyFormatter.format(expense.amount)}',
+                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: expense.isCredit ? AppColors.accent : null,
+                ),
               ),
               const SizedBox(height: 12),
               Chip(
@@ -161,6 +164,8 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
             child: Column(
               children: [
                 _infoRow(context, Icons.category, 'Category', expense.category.replaceAll('_', ' ').split(' ').map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '').join(' ')),
+                const Divider(height: 16),
+                _infoRow(context, Icons.swap_vert, 'Type', expense.isCredit ? 'Credited' : 'Debited'),
                 const Divider(height: 16),
                 _infoRow(context, Icons.payment, 'Payment Mode', expense.paymentMode.replaceAll('_', ' ').split(' ').map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '').join(' ')),
                 const Divider(height: 16),

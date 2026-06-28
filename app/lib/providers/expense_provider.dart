@@ -1,8 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/repositories/expense_repository.dart';
 import '../data/models/expense_model.dart';
-import 'auth_provider.dart';
+import 'service_providers.dart';
 import 'insights_provider.dart';
+import 'balance_provider.dart';
 
 final expenseRepositoryProvider = Provider<ExpenseRepository>((ref) {
   return ExpenseRepository(ref.watch(apiServiceProvider));
@@ -41,6 +42,11 @@ class ExpenseListNotifier extends StateNotifier<AsyncValue<List<ExpenseModel>>> 
       final result = await _repo.createExpense(input);
       state = AsyncData([result.expense, ...state.value ?? <ExpenseModel>[]]);
       _invalidateRelated();
+      _ref.read(balanceProvider.notifier).adjustBalance(
+        amount: input.amount,
+        paymentMode: input.paymentMode,
+        isCredit: input.transactionType == 'credit',
+      );
       return result.budgetAlert;
     } catch (e, st) {
       state = AsyncError(e, st);
@@ -50,13 +56,27 @@ class ExpenseListNotifier extends StateNotifier<AsyncValue<List<ExpenseModel>>> 
 
   Future<void> deleteExpense(String id) async {
     try {
+      final current = state.value ?? [];
+      final expense = current.where((e) => e.id == id).firstOrNull;
       await _repo.deleteExpense(id);
-      state = AsyncData([...state.value?.where((e) => e.id != id) ?? []]);
+      state = AsyncData([...current.where((e) => e.id != id)]);
       _invalidateRelated();
+      if (expense != null) {
+        _ref.read(balanceProvider.notifier).adjustBalance(
+          amount: expense.amount,
+          paymentMode: expense.paymentMode,
+          isCredit: expense.transactionType == 'debit',
+        );
+      }
     } catch (e, st) {
       state = AsyncError(e, st);
       rethrow;
     }
+  }
+
+  Future<void> syncPending() async {
+    await _repo.syncPendingOps();
+    await fetch();
   }
 }
 

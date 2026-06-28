@@ -18,6 +18,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final _tagsCtrl = TextEditingController();
   String _selectedCategory = 'food';
   String _paymentMode = 'upi';
+  String _transactionType = 'debit';
   late DateTime _selectedDate;
   bool _saving = false;
   String? _groupId;
@@ -105,6 +106,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       date: _selectedDate,
       note: _noteCtrl.text.trim(),
       paymentMode: _paymentMode,
+      transactionType: _transactionType,
       tags: tags,
       groupId: _groupId,
     );
@@ -113,7 +115,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       await ref.read(expenseListProvider((month: _selectedDate.month, year: _selectedDate.year)).notifier).addExpense(input);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Expense added ✓'), backgroundColor: AppColors.accent),
+          SnackBar(content: Text(_transactionType == 'debit' ? 'Expense added ✓' : 'Income added ✓'), backgroundColor: AppColors.accent),
         );
         context.pop();
       }
@@ -132,12 +134,86 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Expense')),
+      appBar: AppBar(title: const Text('Add Transaction')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _transactionType = 'debit'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: _transactionType == 'debit'
+                            ? AppColors.negative.withOpacity(0.15)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _transactionType == 'debit'
+                              ? AppColors.negative
+                              : AppColors.divider,
+                          width: _transactionType == 'debit' ? 2 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.arrow_upward, size: 18, color: _transactionType == 'debit' ? AppColors.negative : AppColors.textSecondary),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Debited',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: _transactionType == 'debit' ? AppColors.negative : AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _transactionType = 'credit'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: _transactionType == 'credit'
+                            ? AppColors.accent.withOpacity(0.15)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _transactionType == 'credit'
+                              ? AppColors.accent
+                              : AppColors.divider,
+                          width: _transactionType == 'credit' ? 2 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.arrow_downward, size: 18, color: _transactionType == 'credit' ? AppColors.accent : AppColors.textSecondary),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Credited',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: _transactionType == 'credit' ? AppColors.accent : AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
             TextField(
               controller: _amountCtrl,
               keyboardType: TextInputType.number,
@@ -203,17 +279,15 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: ['upi', 'cash', 'card', 'net_banking'].map((mode) {
-                  final label = mode == 'net_banking' ? 'Net Banking' : mode[0].toUpperCase() + mode.substring(1);
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(label, style: const TextStyle(fontSize: 13)),
-                      selected: _paymentMode == mode,
-                      onSelected: (_) => setState(() => _paymentMode = mode),
-                    ),
-                  );
-                }).toList(),
+                children: [
+                  _modeChip('Cash', Icons.money, 'cash'),
+                  const SizedBox(width: 8),
+                  _modeChip('UPI', Icons.qr_code_scanner, 'upi'),
+                  const SizedBox(width: 8),
+                  _modeChip('Card', Icons.credit_card, 'card'),
+                  const SizedBox(width: 8),
+                  _modeChip('Net Banking', Icons.account_balance, 'net_banking'),
+                ],
               ),
             ),
             const SizedBox(height: 20),
@@ -261,7 +335,42 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 ),
                 child: _saving
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text('Save Expense', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    : Text(_transactionType == 'debit' ? 'Save Expense' : 'Save Income', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _modeChip(String label, IconData icon, String value) {
+    final isSelected = _paymentMode == value;
+    return GestureDetector(
+      onTap: () => setState(() => _paymentMode = value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.secondary.withOpacity(0.15)
+              : AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppColors.secondary : AppColors.divider,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: isSelected ? AppColors.secondary : AppColors.textSecondary),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                color: isSelected ? AppColors.secondary : AppColors.textSecondary,
               ),
             ),
           ],

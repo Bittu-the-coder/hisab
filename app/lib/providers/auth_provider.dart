@@ -1,21 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../data/services/api_service.dart';
-import '../data/services/local_storage.dart';
 import '../data/repositories/auth_repository.dart';
 import '../data/models/user_model.dart';
+import '../data/services/local_storage.dart';
+import 'service_providers.dart';
 import 'expense_provider.dart';
 import 'insights_provider.dart';
 import 'budget_provider.dart';
 import 'group_provider.dart';
-
-final secureStorageProvider = Provider<FlutterSecureStorage>((ref) => const FlutterSecureStorage());
-final localStorageProvider = Provider<LocalStorage>((ref) => LocalStorage(ref.watch(secureStorageProvider)));
-
-final apiServiceProvider = Provider<ApiService>((ref) {
-  final api = ApiService(ref.watch(secureStorageProvider));
-  return api;
-});
+import 'balance_provider.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(ref.watch(apiServiceProvider));
@@ -45,6 +37,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
       try {
         final user = await _authRepo.getMe();
         state = AsyncData(user);
+        _ref.read(balanceProvider.notifier).fetch();
       } catch (_) {
         await _storage.clearAll();
         state = const AsyncData(null);
@@ -59,6 +52,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
       await _storage.saveTokens(result.accessToken, result.refreshToken);
       _invalidateData();
       state = AsyncData(result.user);
+      _ref.read(balanceProvider.notifier).fetch();
     } catch (e, st) {
       state = AsyncError(e, st);
     }
@@ -71,6 +65,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
       await _storage.saveTokens(result.accessToken, result.refreshToken);
       _invalidateData();
       state = AsyncData(result.user);
+      _ref.read(balanceProvider.notifier).fetch();
     } catch (e, st) {
       state = AsyncError(e, st);
     }
@@ -80,6 +75,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     try { await _authRepo.logout(); } catch (_) {}
     await _storage.clearAll();
     _invalidateData();
+    _ref.invalidate(balanceProvider);
     state = const AsyncData(null);
   }
 }

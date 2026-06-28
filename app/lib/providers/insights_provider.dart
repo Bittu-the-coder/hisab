@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/repositories/insights_repository.dart';
 import '../data/models/insight_model.dart';
-import 'auth_provider.dart';
+import 'service_providers.dart';
 
 final insightsRepositoryProvider = Provider<InsightsRepository>((ref) {
   return InsightsRepository(ref.watch(apiServiceProvider));

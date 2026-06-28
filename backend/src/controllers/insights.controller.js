@@ -1,6 +1,10 @@
 const Expense = require('../models/Expense');
 const Budget = require('../models/Budget');
 
+function debitMatch(userId, start, end) {
+  return { user: userId, transactionType: 'debit', date: { $gte: start, $lt: end } };
+}
+
 exports.summary = async (req, res, next) => {
   try {
     const { month, year } = req.query;
@@ -10,11 +14,11 @@ exports.summary = async (req, res, next) => {
 
     const [result, lastResult] = await Promise.all([
       Expense.aggregate([
-        { $match: { user: req.user._id, date: { $gte: start, $lt: end } } },
+        { $match: debitMatch(req.user._id, start, end) },
         { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }
       ]),
       Expense.aggregate([
-        { $match: { user: req.user._id, date: { $gte: new Date(y, m - 2, 1), $lt: new Date(y, m - 1, 1) } } },
+        { $match: debitMatch(req.user._id, new Date(y, m - 2, 1), new Date(y, m - 1, 1)) },
         { $group: { _id: null, total: { $sum: '$amount' } } }
       ])
     ]);
@@ -27,7 +31,7 @@ exports.summary = async (req, res, next) => {
       : 0;
 
     const topCat = await Expense.aggregate([
-      { $match: { user: req.user._id, date: { $gte: start, $lt: end } } },
+      { $match: debitMatch(req.user._id, start, end) },
       { $group: { _id: '$category', total: { $sum: '$amount' } } },
       { $sort: { total: -1 } },
       { $limit: 1 }
@@ -55,7 +59,7 @@ exports.categoryBreakdown = async (req, res, next) => {
     const end = new Date(year, month, 1);
 
     const breakdown = await Expense.aggregate([
-      { $match: { user: req.user._id, date: { $gte: start, $lt: end } } },
+      { $match: debitMatch(req.user._id, start, end) },
       { $group: { _id: '$category', total: { $sum: '$amount' }, count: { $sum: 1 } } },
       { $sort: { total: -1 } }
     ]);
@@ -85,7 +89,7 @@ exports.dailyLog = async (req, res, next) => {
     const end = new Date(y, m, 1);
 
     const daily = await Expense.aggregate([
-      { $match: { user: req.user._id, date: { $gte: start, $lt: end } } },
+      { $match: debitMatch(req.user._id, start, end) },
       { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$date' } }, total: { $sum: '$amount' }, count: { $sum: 1 } } },
       { $sort: { _id: 1 } }
     ]);
@@ -125,7 +129,7 @@ exports.monthlyTrend = async (req, res, next) => {
 
       const [spendResult, budget] = await Promise.all([
         Expense.aggregate([
-          { $match: { user: req.user._id, date: { $gte: start, $lt: end } } },
+          { $match: debitMatch(req.user._id, start, end) },
           { $group: { _id: null, total: { $sum: '$amount' } } }
         ]),
         Budget.findOne({ user: req.user._id, month: m, year: y })
@@ -155,7 +159,7 @@ exports.budgetStatus = async (req, res, next) => {
     const [budget, spendResult] = await Promise.all([
       Budget.findOne({ user: req.user._id, month: m, year: y }),
       Expense.aggregate([
-        { $match: { user: req.user._id, date: { $gte: start, $lt: end } } },
+        { $match: debitMatch(req.user._id, start, end) },
         { $group: { _id: null, total: { $sum: '$amount' } } }
       ])
     ]);
@@ -168,7 +172,7 @@ exports.budgetStatus = async (req, res, next) => {
     const percentUsed = +((totalSpent / budget.totalBudget) * 100).toFixed(1);
 
     const breakdown = await Expense.aggregate([
-      { $match: { user: req.user._id, date: { $gte: start, $lt: end } } },
+      { $match: debitMatch(req.user._id, start, end) },
       { $group: { _id: '$category', total: { $sum: '$amount' } } }
     ]);
 

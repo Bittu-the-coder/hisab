@@ -22,7 +22,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 800),
     );
     _fadeIn = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
     _slideUp = Tween<Offset>(
@@ -40,17 +40,20 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Future<void> _checkAuth() async {
-    await Future.delayed(const Duration(milliseconds: 1800));
-    if (!mounted) return;
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     final seenOnboarding = prefs.getBool('onboarding_seen') ?? false;
     if (!mounted) return;
     if (!seenOnboarding) {
+      await _controller.forward(from: 0);
+      if (!mounted) return;
       context.go('/onboarding');
       return;
     }
     final auth = ref.read(authProvider.notifier);
     await auth.tryAutoLogin();
+    if (!mounted) return;
+    await _controller.forward(from: 0);
     if (!mounted) return;
     final user = ref.read(authProvider);
     if (user.valueOrNull != null) {

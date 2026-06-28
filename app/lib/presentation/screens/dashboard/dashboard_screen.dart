@@ -5,10 +5,12 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_helpers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/expense_model.dart';
+import '../../../data/models/balance_model.dart';
 import '../../../providers/expense_provider.dart';
 import '../../../providers/insights_provider.dart';
 import '../../../data/models/insight_model.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/balance_provider.dart';
 import '../../../providers/theme_provider.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -30,6 +32,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   void _refresh() {
+    ref.invalidate(balanceProvider);
+    ref.invalidate(expenseListProvider((month: _month, year: _year)));
+    ref.invalidate(insightSummaryProvider((month: _month, year: _year)));
     setState(() {});
   }
 
@@ -62,10 +67,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).valueOrNull;
     final themeMode = ref.watch(themeModeProvider);
+    final balanceAsync = ref.watch(balanceProvider);
     final insightAsync = ref.watch(insightSummaryProvider((month: _month, year: _year)));
     final budgetAsync = ref.watch(budgetStatusProvider((month: _month, year: _year)));
     final expensesAsync = ref.watch(expenseListProvider((month: _month, year: _year)));
 
+    final balance = balanceAsync.valueOrNull;
     final insight = insightAsync.valueOrNull;
     final budgetStatus = budgetAsync.valueOrNull;
     final expenses = expensesAsync.valueOrNull ?? [];
@@ -91,15 +98,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            if (insightAsync.isLoading || budgetAsync.isLoading || expensesAsync.isLoading)
+            if (balanceAsync.isLoading || insightAsync.isLoading)
               const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
-            else if (insightAsync.hasError || budgetAsync.hasError || expensesAsync.hasError) ...[
-              if (expenses.isEmpty) _offlineBanner(context) else const SizedBox.shrink(),
+            else ...[
+              _balanceCards(balance),
+              const SizedBox(height: 16),
               _summaryCard(context, insight ?? InsightSummary(totalSpent: 0, totalLastMonth: 0, percentageChange: 0, topCategory: 'other', expenseCount: 0, avgPerDay: 0), _month, _year),
-              if (budgetStatus != null && budgetStatus.isAlertTriggered)
-                _budgetAlertCard(context, budgetStatus),
-            ] else ...[
-              _summaryCard(context, insight!, _month, _year),
               if (budgetStatus != null && budgetStatus.isAlertTriggered)
                 _budgetAlertCard(context, budgetStatus),
             ],
@@ -135,21 +139,35 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _offlineBanner(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Card(
-        color: AppColors.warning.withOpacity(0.12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              const Icon(Icons.cloud_off, size: 18, color: AppColors.warning),
-              const SizedBox(width: 8),
-              Expanded(child: Text('Could not reach server. Showing cached data.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.warning))),
-              TextButton(onPressed: _refresh, child: const Text('Retry', style: TextStyle(fontSize: 12))),
-            ],
-          ),
+  Widget _balanceCards(BalanceModel? balance) {
+    final cash = balance?.cashBalance ?? 0;
+    final online = balance?.onlineBalance ?? 0;
+    final total = cash + online;
+    return Row(
+      children: [
+        Expanded(child: _balanceCard(context, 'Cash', CurrencyFormatter.format(cash), Icons.money, AppColors.accent)),
+        const SizedBox(width: 12),
+        Expanded(child: _balanceCard(context, 'Online', CurrencyFormatter.format(online), Icons.account_balance_wallet, AppColors.secondary)),
+        const SizedBox(width: 12),
+        Expanded(child: _balanceCard(context, 'Total', CurrencyFormatter.format(total), Icons.account_balance, AppColors.primary)),
+      ],
+    );
+  }
+
+  Widget _balanceCard(BuildContext context, String label, String amount, IconData icon, Color color) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(height: 6),
+            Text(amount, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, fontSize: 13)),
+            const SizedBox(height: 2),
+            Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 10)),
+          ],
         ),
       ),
     );
@@ -274,12 +292,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
         title: Text(expense.title, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
         subtitle: Text(
-          '${DateHelpers.format(expense.date)}  ·  ${expense.paymentMode.toUpperCase()}',
+          '${DateHelpers.format(expense.date)}  ·  ${expense.paymentMode.toUpperCase()}  ·  ${expense.isCredit ? "Credit" : "Debit"}',
           style: Theme.of(context).textTheme.bodySmall,
         ),
         trailing: Text(
-          CurrencyFormatter.format(expense.amount),
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+          '${expense.isCredit ? '+' : '-'} ${CurrencyFormatter.format(expense.amount)}',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: expense.isCredit ? AppColors.accent : null,
+          ),
         ),
         onTap: () => context.push('/home/expenses/${expense.id}'),
       ),

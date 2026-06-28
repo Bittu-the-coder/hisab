@@ -9,7 +9,7 @@ import '../../../core/utils/date_helpers.dart';
 import '../../../providers/insights_provider.dart';
 import '../../../data/models/insight_model.dart';
 import '../../../data/models/expense_model.dart';
-import '../../../providers/auth_provider.dart';
+import '../../../providers/service_providers.dart';
 
 class InsightsScreen extends ConsumerStatefulWidget {
   const InsightsScreen({super.key});
@@ -97,15 +97,15 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.chevron_left),
+                    icon: const Icon(Icons.chevron_left, color: Colors.white),
                     onPressed: _prevMonth,
                   ),
                   Text(
                     monthLabel,
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.chevron_right),
+                    icon: const Icon(Icons.chevron_right, color: Colors.white),
                     onPressed: _nextMonth,
                   ),
                 ],
@@ -113,9 +113,9 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen>
               TabBar(
                 controller: _tabController,
                 isScrollable: true,
-                labelColor: Theme.of(context).colorScheme.primary,
-                unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                indicatorColor: Theme.of(context).colorScheme.secondary,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white60,
+                indicatorColor: Colors.white,
                 tabs: const [
                   Tab(text: 'Overview'),
                   Tab(text: 'Categories'),

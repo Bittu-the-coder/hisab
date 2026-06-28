@@ -15,7 +15,7 @@ class InsightsRepository {
       if (e is DioException && e.response?.statusCode == 404) {
         return InsightSummary(totalSpent: 0, totalLastMonth: 0, percentageChange: 0, topCategory: 'other', expenseCount: 0, avgPerDay: 0);
       }
-      rethrow;
+      return InsightSummary(totalSpent: 0, totalLastMonth: 0, percentageChange: 0, topCategory: 'other', expenseCount: 0, avgPerDay: 0);
     }
   }
 
@@ -25,7 +25,7 @@ class InsightsRepository {
       return (data['breakdown'] as List).map((e) => CategoryBreakdown.fromJson(e)).toList();
     } catch (e) {
       if (e is DioException && e.response?.statusCode == 404) return [];
-      rethrow;
+      return [];
     }
   }
 
@@ -35,7 +35,7 @@ class InsightsRepository {
       return (data['daily'] as List).map((e) => DailyLogEntry.fromJson(e)).toList();
     } catch (e) {
       if (e is DioException && e.response?.statusCode == 404) return [];
-      rethrow;
+      return [];
     }
   }
 
@@ -45,7 +45,7 @@ class InsightsRepository {
       return (data['trend'] as List).map((e) => MonthlyTrend.fromJson(e)).toList();
     } catch (e) {
       if (e is DioException && e.response?.statusCode == 404) return [];
-      rethrow;
+      return [];
     }
   }
 
@@ -56,7 +56,7 @@ class InsightsRepository {
       return BudgetStatus.fromJson(data);
     } catch (e) {
       if (e is DioException && e.response?.statusCode == 404) return null;
-      rethrow;
+      return null;
     }
   }
 }
