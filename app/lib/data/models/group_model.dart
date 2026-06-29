@@ -19,6 +19,17 @@ class GroupModel {
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
+  Map<String, dynamic> toJson() => {
+    '_id': id,
+    'name': name,
+    'icon': icon,
+    'members': members,
+    'admins': admins,
+    'createdBy': createdBy,
+    'inviteCode': inviteCode,
+    'createdAt': createdAt.toIso8601String(),
+  };
+
   factory GroupModel.fromJson(Map<String, dynamic> json) {
     return GroupModel(
       id: json['_id'] ?? '',

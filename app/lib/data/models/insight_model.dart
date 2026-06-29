@@ -15,6 +15,15 @@ class InsightSummary {
     required this.avgPerDay,
   });
 
+  Map<String, dynamic> toJson() => {
+    'totalSpent': totalSpent,
+    'totalLastMonth': totalLastMonth,
+    'percentageChange': percentageChange,
+    'topCategory': topCategory,
+    'expenseCount': expenseCount,
+    'avgPerDay': avgPerDay,
+  };
+
   factory InsightSummary.fromJson(Map<String, dynamic> json) {
     return InsightSummary(
       totalSpent: json['totalSpent'] ?? 0,

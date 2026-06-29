@@ -118,6 +118,36 @@ class LocalDatabase {
     await prefs.setString('cached_balance', jsonEncode({'cash': cash, 'online': online}));
   }
 
+  static Future<void> saveBudget(String key, String json) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('budget_$key', json);
+  }
+
+  static Future<String?> getCachedBudget(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('budget_$key');
+  }
+
+  static Future<void> saveGroups(String json) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('cached_groups', json);
+  }
+
+  static Future<String?> getCachedGroups() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('cached_groups');
+  }
+
+  static Future<void> saveInsightSummary(String key, String json) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('insight_$key', json);
+  }
+
+  static Future<String?> getCachedInsightSummary(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('insight_$key');
+  }
+
   static Future<({int cash, int online})> getCachedBalance() async {
     final prefs = await SharedPreferences.getInstance();
     final data = prefs.getString('cached_balance');

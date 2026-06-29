@@ -27,6 +27,15 @@ class BudgetModel {
       alertAt: json['alertAt'] ?? 80,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    '_id': id,
+    'month': month,
+    'year': year,
+    'totalBudget': totalBudget,
+    'categories': categories.map((c) => c.toJson()).toList(),
+    'alertAt': alertAt,
+  };
 }
 
 class CategoryBudget {
