@@ -1,0 +1,6 @@
+- Initial F-Droid release
+- Track expenses with dual balance (cash/online)
+- Offline-first with automatic sync
+- Group expense sharing
+- Monthly insights and budget tracking
+- Dark mode support

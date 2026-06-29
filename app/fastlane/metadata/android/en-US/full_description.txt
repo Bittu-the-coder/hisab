@@ -1,0 +1,11 @@
+Hisab is a free and open-source personal expense tracker designed for privacy and offline use.
+
+Features:
+- Track expenses with cash and online balance
+- Works fully offline with local database
+- Share expenses with groups using invite codes
+- Monthly insights and category breakdowns
+- Budget tracking per category
+- Dark mode support
+- Beautiful charts and visualizations
+- No ads, no tracking, no permissions beyond what's needed
